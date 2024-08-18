@@ -6,7 +6,7 @@ import random as r
 import re
 from tkinter import *
 class Game:
-    def __init__(self, loc_num=None, points=0, additive=3, rnd=1, guess=None, time=0, correct=None, incorrect=None, feedback_msg=None, win=None): # Defines and sets the attribute states.
+    def __init__(self, loc_num=None, points=0, additive=3, rnd=1, guess=None, time=0, correct=None, incorrect=None, feedback_msg=None, win=None, max_rounds=11): # Defines and sets the attribute states.
         '''Instance variables'''
         self.loc_num = loc_num # The image name and therefore the line the answers to that image are located.
         self.points = points # Amount of points the user has.
@@ -22,8 +22,10 @@ class Game:
         self.feedback_msg = None
         self.continue_timer = True # Will end the game if set to false.
         self.win = win
+        self.max_rounds = max_rounds
 
     def get_guess(self, root):
+        max_characters = 13
         '''Gets the guess (text) from the guess_text_box entry box'''
         if self.continue_timer == False:
             pass
@@ -36,7 +38,7 @@ class Game:
                     pass
                 self.feedback_msg = Label(root, text="Type in the guess box below!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
                 self.feedback_msg.place(relx=0.5, rely=0.12, anchor=CENTER)
-            elif len(self.guess) > 13: # If the users guess is more than 15 letters.
+            elif len(self.guess) > max_characters: # If the users guess is more than 15 letters.
                 try:
                     self.feedback_msg.destroy()
                 except AttributeError:
@@ -63,6 +65,7 @@ class Game:
             return answers, self.update_game_state(answers) # Returns the acceptable answers so the self.guess can be processed.
 
     def update_game_state(self, answers):
+        additive_penalty = 1
         '''Updates the game statistics: Points, Round number, IntVar's (points/time/rnd labels) and handles the correct/incorrect label.'''
         for answer in [answer for answer in answers if answer.lower() in self.guess.lower()]: # Check every possible answer to see if the answer lies within self.guess.         
             if self.rnd == 1:
@@ -82,7 +85,7 @@ class Game:
             self.correct.place(relx=0.5, rely=0.12, anchor=CENTER)
             points_val.set(self.points)
             self.points_label.config(textvariable=points_val)                
-            if self.rnd == 11: # There are only 10 rounds in the game, so round 11 means the game is done.
+            if self.rnd == self.max_rounds: # There are only 10 rounds in the game, so round 11 means the game is done.
                 rnd_val = IntVar(value=self.rnd-1) # Round 11 is actually round 10.
                 return self.game_end(root) # Ends the game.
             rnd_val = IntVar(value=self.rnd)                         
@@ -99,7 +102,7 @@ class Game:
             except AttributeError:
                 pass
             if self.additive > 1: # Additive reductions cap at 1, otherwise the user would get no points or negative points.
-                self.additive -= 1
+                self.additive -= additive_penalty
             self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
             self.incorrect.place(relx=0.5, rely=0.12, anchor=CENTER)
             return self.additive # So points can continue to be reduced if the user keeps guessing wrong on the same round.
@@ -138,7 +141,8 @@ class Game:
             self.loc_label.destroy() # Deletes the old image if there is one.
         except AttributeError:
             pass
-        loc_generate = r.randint(1, 30)  # Generates a random location img since image names are labeled from one to thirty i.e Loc1.
+        num_of_images = 30
+        loc_generate = r.randint(1, num_of_images)  # Generates a random location img since image names are labeled from one to thirty i.e Loc1.
         self.loc_num = loc_generate # Sets the loc_num so it can be used for getting the answers (number is the same as the line the answers are on -1)
         self.loc_set = f"Loc{loc_generate}"  # Open the location image with that filename.
         self.loc_img = PhotoImage(file=f"Assets/{self.loc_set}.png") # Opens the generated loc img from the assets folder.
@@ -158,16 +162,17 @@ class Game:
             return self.additive, self.get_loc(root)
 
     def update_time(self, root):
+        time_increment = 1000
         '''Updates the users elapsed time independantly from other methods'''
         if self.continue_timer: # While the game is active.
-            self.time += 1 # Add 1 second.
+            self.time += time_increment / 1000 # Add 1 second.
             time_val = StringVar()
             time_val.set(str(self.time) + "s") # Updates the displayed time label on screen.
             self.time_label.config(textvariable=time_val, bg='white', fg='black', font=("Calibri", 18, "bold"))
-            root.after(1000, lambda: self.update_time(root)) # After each second, recall the method so the time can be updated again.
+            root.after(time_increment, lambda: self.update_time(root)) # After each second, recall the method so the time can be updated again.
         else:
             self.process_time() # If the game has ended, process the time.
-
+ 
     def game_end(self, root):
         '''Ends the game'''
         try:
@@ -226,7 +231,7 @@ class Game:
         leaderboard_pos5_label = Label(root, textvariable=leaderboard_pos5_time, bg='white', fg='black', font=("Calibri", "15", "bold"))
         leaderboard_pos5_label.place(relx=0.09, rely=0.7)
         leaderboard.close()
-
+    
 instance = Game() # Creates the object.
 def quit(root):
     '''Quits the game: closes the GUI'''
