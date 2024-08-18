@@ -2,7 +2,8 @@
 # Written By: Evan Lightfoot
 # Date: 26/07/2024
 # Version: 2
-count = 0
+import random
+import re
 from tkinter import *
 class Game:
     def __init__(self, points=0, rnd=0, guess=None, correct=None, incorrect=None):
@@ -14,17 +15,20 @@ class Game:
 
     def get_guess(self, root):
         global count
+        global amount
         self.guess = guess.get().replace(" ", "")
+        validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess)
+        self.guess = validated_guess
         if self.guess == "":
             pass
         else:
-            with open("answer_sheet.txt", 'r') as answers:
+            with open("Assets\answer_sheet.txt", 'r') as answers:
                 data = answers.readlines()
                 line = data[count].strip().lower()
                 words = line.split()
                 for word in words:
                     if word in self.guess():
-                        self.points += 1
+                        self.points += additive
                         self.rnd += 1
                         count += 1
                         points_val = IntVar(value=self.points)
@@ -43,7 +47,8 @@ class Game:
                         points_label.place(x=110, y=205)
                         rnd_label = Label(root, textvariable=rnd_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
                         rnd_label.place(x=110, y=255)
-                        return self.points, self.rnd, count
+                        additive = 3
+                        return self.points, self.rnd, count, additive, get_loc(root)
                     else:
                         try:
                             self.correct.destroy()
@@ -53,8 +58,10 @@ class Game:
                             self.incorrect.destroy()
                         except AttributeError:
                             pass
+                        additive -= 1
                         self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "15", "bold"))
                         self.incorrect.place(x=888, y=887)
+                        return additive
             answers.close()
 
     def reset(self, root):
@@ -79,10 +86,22 @@ class Game:
         return self.points, self.rnd, count
 
 instance = Game()
-
+count = 0
+additive = 3
 # Quits the game (closes the window)
 def quit(root):
     root.destroy()
+
+def get_loc(root):
+    try:
+        loc.destroy()
+    except NameError:
+        pass
+    loc_generate = r.randint(1, 31)
+    loc_set = f"Loc{loc_generate}"
+    loc_img = PhotoImage(file=f"Assets\{loc_set}.png")
+    loc_label = Label(root, height=700, width=1000, image=location_img, bg='white', highlightbackground="black", highlightthickness=5)
+    loc_label.place(anchor='center', x=960, y=530)
 
 # G.U.I
 root = Tk() # Initialises the window.
@@ -125,10 +144,7 @@ rnd_text = Label(root, bg='white', text="Round:", fg='black', font=("Calibri", "
 rnd_text.place(x=20, y=250)
 rnd_text2 = Label(root, bg='white', text="/10", fg='black', font=("Calibri", "16", "bold"))
 rnd_text2.place(x=124, y=255)
-location_img = PhotoImage(file="location.png")
-location_label = Label(root, height=700, width=1000, image=location_img, bg='white', highlightbackground="black", highlightthickness=5)
-location_label.place(anchor='center', x=960, y=530)
-crest_img = PhotoImage(file="crest.png") # Imports the Howick College Crest
+crest_img = PhotoImage(file="Assets\crest.png") # Imports the Howick College Crest
 crest_label = Label(root, height=175, width=200, image=crest_img, bg='white')
 crest_label.place(x=1700, y=700)
 root.mainloop() # Keeps the window open.
