@@ -3,7 +3,6 @@
 # Date: 26/07/2024
 # Version: 2
 count = 0
-
 from tkinter import *
 class Game:
     def __init__(self, points=0, rnd=0, guess=None, correct=None, incorrect=None):
@@ -23,39 +22,40 @@ class Game:
                 data = answers.readlines()
                 line = data[count].strip().lower()
                 words = line.split()
-                if self.guess.lower() in words:
-                    self.points += 1
-                    self.rnd += 1
-                    count += 1
-                    points_val = IntVar(value=self.points)
-                    rnd_val = IntVar(value=self.rnd) 
-                    try:
-                        self.incorrect.destroy()
-                    except AttributeError:
-                        pass
-                    try: 
-                        self.correct.destroy()
-                    except AttributeError:
-                        pass
-                    self.correct = Label(root, text="Correct!", bg="#FFFDD0", fg='green', font=("Calibri", "15", "bold"))
-                    self.correct.place(x=888, y=887)
-                    points_label = Label(root, textvariable=points_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
-                    points_label.place(x=110, y=205)
-                    rnd_label = Label(root, textvariable=rnd_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
-                    rnd_label.place(x=110, y=255)
-                    return self.points, self.rnd, count
-                else:
-                    try:
-                        self.correct.destroy()
-                    except AttributeError:
-                        pass
-                    try:
-                        self.incorrect.destroy()
-                    except AttributeError:
-                        pass
-                    self.incorrect = Label(root, text="Incorrect!", bg="#FFFDD0", fg='darkred', font=("Calibri", "15", "bold"))
-                    self.incorrect.place(x=888, y=887)
-            answers.close()  
+                for word in words:
+                    if word in self.guess():
+                        self.points += 1
+                        self.rnd += 1
+                        count += 1
+                        points_val = IntVar(value=self.points)
+                        rnd_val = IntVar(value=self.rnd) 
+                        try:
+                            self.incorrect.destroy()
+                        except AttributeError:
+                            pass
+                        try: 
+                            self.correct.destroy()
+                        except AttributeError:
+                            pass
+                        self.correct = Label(root, text="Correct!", bg="#00FFFF", fg='green', font=("Calibri", "15", "bold"))
+                        self.correct.place(x=888, y=887)
+                        points_label = Label(root, textvariable=points_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
+                        points_label.place(x=110, y=205)
+                        rnd_label = Label(root, textvariable=rnd_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
+                        rnd_label.place(x=110, y=255)
+                        return self.points, self.rnd, count
+                    else:
+                        try:
+                            self.correct.destroy()
+                        except AttributeError:
+                            pass
+                        try:
+                            self.incorrect.destroy()
+                        except AttributeError:
+                            pass
+                        self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "15", "bold"))
+                        self.incorrect.place(x=888, y=887)
+            answers.close()
 
     def reset(self, root):
         global count
@@ -75,7 +75,7 @@ class Game:
         points_label = Label(root, textvariable=points_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
         points_label.place(x=110, y=205)
         rnd_label = Label(root, textvariable=rnd_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
-        rnd_label.place(x=110, y=255)        
+        rnd_label.place(x=110, y=255)
         return self.points, self.rnd, count
 
 instance = Game()
@@ -89,11 +89,11 @@ root = Tk() # Initialises the window.
 root.resizable(False, False) # Locks the window size to prevent re-sizing.
 root.state('zoomed') # Makes the window fullscreen.
 root.title("Howick College GeoGuesser V2.0")
-root.configure(background='#FFFDD0') # Cream coloured background.
+root.configure(background='#00FFFF') # Cream coloured background.
 guess = StringVar()
 guess_text_box = Entry(root, textvariable=guess, width=30, highlightbackground="black", highlightthickness="1", font=("Calibiri", "11"))
 guess_text_box.place(x=830, y=917)
-guess_text_box_label = Label(root, text="Location:", fg="black", bg="#FFFDD0", font=("Calibri", "15", "bold"))
+guess_text_box_label = Label(root, text="Location:", fg="black", bg="#00FFFF", font=("Calibri", "15", "bold"))
 guess_text_box_label.place(x=748, y=910)
 guess_btn = Button(root, text="Guess", borderwidth="2", width="13", bg='lime', fg='black', font=("Calibri", "15", "bold"),command=lambda:instance.get_guess(root)) # Guess button, calls the guess function.
 guess_btn.place(x=1100, y=900)
@@ -115,7 +115,7 @@ how_to_play_text_l4 = Label(root, bg='white', fg="green", text="- There are 10 r
 how_to_play_text_l4.place(x=1490, y=320)
 how_to_play_text_l5 = Label(root, bg='white', fg="green", text="- Good luck and have fun!", font=("Calibri", "11", "bold"))
 how_to_play_text_l5.place(x=1490, y=355)  
-title = Label(root, text="Howick College GeoGuesser", bg='#FFFDD0', fg='darkblue', font=("Calibri", "30", "bold", "underline"))
+title = Label(root, text="Howick College GeoGuesser", bg='#00FFFF', fg='darkblue', font=("Calibri", "30", "bold", "underline"))
 title.place(x=740, y=120)
 game_stats_frame = Frame(root, bg='white', width=300, height=150, highlightbackground="black", highlightthickness=5)
 game_stats_frame.place(x=2, y=174)
