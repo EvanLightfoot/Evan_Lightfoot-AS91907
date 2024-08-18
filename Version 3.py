@@ -6,7 +6,7 @@ import random as r
 import re
 from tkinter import *
 class Game:
-    def __init__(self, points=0, rnd=1, guess=None, loc_num=None, additive=3, time=0, correct=None, incorrect=None): # Sets self values.
+    def __init__(self, points=0, rnd=1, guess=None, loc_num=None, additive=3, time=0, correct=None, incorrect=None, win=None): # Sets self values.
         '''Sets the self values'''
         self.points = points # Amount of points the user has.
         self.rnd = rnd # The current round (rnd) number since there are 10 rounds.
@@ -18,21 +18,23 @@ class Game:
         self.points_label = None
         self.rnd_label = None
         self.time_label = None
+        self.win = win
         self.continue_timer = True # Will end the game if false.
         self.loc_num = loc_num # The image name and therefore the line the answers to the image are located.
         self.additive = additive # 3 points on first guess if correct, 2 points on second guess, 1 point all others.
 
     def get_guess(self, root): # Gets the guess from the Entry Box       
-        if self.rnd == 1:
-            self.continue_timer = True
-            self.continue_timer, self.update_time(root)
         self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess so it can be validated easily.
         if self.guess == "": # If the user didn't enter anything but submitted their guess, ignore it.
             pass
         else:
             validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
             self.guess = validated_guess # Updates self.guess
-            return self.guess, self.get_answer() # Validate the guess.
+            if self.rnd == 1:
+                self.continue_timer = True            
+                return self.guess, self.continue_timer, self.get_answer(), self.update_time(root) # Validate the guess.
+            else:
+                return self.guess, self.get_answer() # Validate the guess.
 
     def get_answer(self): # Gets the answer for the current location image.
         with open("Assets/answer_sheet.txt", 'r') as answers:
@@ -58,9 +60,9 @@ class Game:
             self.correct.place(relx=0.5, rely=0.12, anchor=CENTER)
             points_val.set(self.points)
             self.points_label.config(textvariable=points_val)                
-            if self.rnd == 11:
+            if self.rnd == 11: # There are only 10 rounds in the game, so round 11 means the game is done.
                 rnd_val = IntVar(value=self.rnd-1)
-                return self.game_end(root)
+                return self.game_end(root) # Game is over.
             rnd_val = IntVar(value=self.rnd)                             
             rnd_val.set(self.rnd)
             self.rnd_label.config(textvariable=rnd_val)
@@ -74,21 +76,25 @@ class Game:
                 self.incorrect.destroy()
             except AttributeError:
                 pass
-            if self.additive > 1: # Additive reductions cap at 1 otherwise the user would get no points.
+            if self.additive > 1: # Additive reductions cap at 1, otherwise the user would get no points.
                 self.additive -= 1
             self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
             self.incorrect.place(relx=0.5, rely=0.12, anchor=CENTER)
-            return self.additive # Returns new additive value.
+            return self.additive
 
-    def replay(self, root): # Allows user to reset their game.
+    def replay(self, root): # '''Allows user to reset their game.'''
         self.continue_timer = False
-        guess_btn.config(state='normal')
-        self.additive = 3 # Resets the additive value to default.
-        '''Sets game stats to 0'''
+        guess_btn.config(state='normal') # Allows button to be clickable again
+        try:
+            self.game_win.destroy()
+        except AttributeError:
+            pass
+        # Resets game stats to their default values.
+        self.additive = 3
         self.points = 0
         self.rnd = 1
         self.time = 0
-        '''Destroys any existing labels'''
+        # Destroys old labels if there are any
         try:
             self.correct.destroy()
         except AttributeError:
@@ -97,17 +103,16 @@ class Game:
             self.incorrect.destroy()
         except AttributeError:
             pass
-        '''Resets the IntVar (text that appears on the GUI)'''
+        # Resets the IntVar's (labels that appear on screen)
         self.time_label.config(textvariable=IntVar(value=0), bg='white', fg='black', font=("Calibri", "18", "bold"))
         self.points_label.config(textvariable=IntVar(value=0), fg='black', bg='white', font=("Calibri", "18", "bold"))
         self.rnd_label.config(textvariable=IntVar(value=1), fg='black', bg='white', font=("Calibri", "18", "bold"))
-        return self.points, self.rnd, self.additive, self.time, self.continue_timer # Returns the new variable values.
+        return self.points, self.rnd, self.additive, self.time, self.continue_timer
 
-    def get_loc(self, root):  # Gets a random location image.png and displays it.
+    def get_loc(self, root):  # '''Gets a random location image.png and displays it.'''
         self.additive = 3
-        '''If there is an existing location image displayed, delete it.'''
         try:
-            self.loc_label.destroy()
+            self.loc_label.destroy() # Deletes the old image if there is one.
         except AttributeError:
             pass
         loc_generate = r.randint(1, 30)  # Generates a random location img since image names are labeled from one to thirty i.e Loc1
@@ -117,48 +122,56 @@ class Game:
         self.img_frame = Frame(root, bg='black', highlightbackground="white", highlightthickness=1)
         self.img_frame.place(relx=0.5, rely=0.4744, anchor=CENTER, relwidth=0.478, relheight=0.63)
         self.loc_label = Label(self.img_frame, image=self.loc_img, bg='white')
-        self.loc_label.image = self.loc_img
+        self.loc_label.image = self.loc_img # Keeps a reference image so its not garbage collected by tkinter.
         self.loc_label.place(relx=0.498, rely=0.497, anchor=CENTER, relwidth=1, relheight=0.998)  # Adjusts the image size to fit in frame
         return self.loc_num, self.additive  # Returns the name of the generated loc image so the answer for it can be located in the answer sheet in get_answer().
     
-    def skip(self): # Allows the user to skip if they don't know the area of a location.
-        if self.continue_timer == False:
+    def skip(self): # '''Allows the user to skip if they don't know the area of a location.'''
+        if self.continue_timer == False: # So the user can't skip if the games over.
             pass
         else:
             self.additive = 3
             return self.additive, self.get_loc(root)
 
-    def update_time(self, root):  
-        if self.continue_timer:
-            self.time += 1
+    def update_time(self, root): # '''Updates the time consistently'''
+        if self.continue_timer: # While the game is active.
+            self.time += 1 # Plus 1 second
             time_val = StringVar()
-            time_val.set(str(self.time) + "s")  
-            self.time_label.config(textvariable=time_val, bg='white', fg='black', font=("Calibri", 18, "bold"))            
-            root.after(1000, lambda: self.update_time(root))
-        else:   
-            self.process_time()
+            time_val.set(str(self.time) + "s") # Updates the time label in game
+            self.time_label.config(textvariable=time_val, bg='white', fg='black', font=("Calibri", 18, "bold"))
+            root.after(1000, lambda: self.update_time(root)) # After 1 second, recall the method
+        else:
+            self.process_time() # If the game has ended, process the time.
                 
-    def game_end(self, root):
-        guess_btn.config(state='disabled')
-        self.continue_timer = False
+    def game_end(self, root): # '''Ends the game'''
+        try:
+            self.game_win.destroy() # Incase the user has played before.
+        except AttributeError:
+            pass
+        guess_btn.config(state='disabled') # Disable the guesses so the game ends
+        self.game_win = Label(root, text="You Win! Click 'Replay' to play again!", bg="#00FFFF", fg='green', font=("Calibri", "20", "bold"))
+        self.game_win.place(relx=0.5, rely=0.12, anchor=CENTER)
+        self.continue_timer = False # Stops the timer
         return self.continue_timer
-
-    def process_time(self):
+    
+    def process_time(self): # '''Processes the elapsed time to see if the user beat any leaderboard times'''
         leaderboard_position = 0
-        with open("Assets/leaderboard.txt", 'r') as leaderboard:
+        with open("Assets/leaderboard.txt", 'r') as leaderboard: # Opens the leaderboard txt file where times are stored.
             lb_data = leaderboard.readlines()
-            for i, time in enumerate(lb_data):
-                if self.time < int(time):
-                    lb_data[i] = str(self.time) + '/n'
-                    with open("Assets/leaderboard.txt", 'w') as leaderboard:
-                        leaderboard.writelines(lb_data)
-                    leaderboard.close()
-                else:
-                    leaderboard_position += 1
+            for i, time in enumerate(lb_data): # Checks all times in the leaderboard file.
+                leaderboard_position += 1
+                if self.time < int(time.strip()): # If the time is less than a leaderboard time.
+                    lb_data.insert(i, str(self.time) + '\n') # Inserts the time.
+                    lb_data = lb_data[:5] # Takes the top 5 positions.
+                break
+            with open("Assets/leaderboard.txt", 'w') as leaderboard:
+                leaderboard.writelines(lb_data) # Writes the positions to the txt file so they can be stored and updated in the txt variables within the lb widget.
+                leaderboard.close()
               
 instance = Game() # Creates the object.
-# Quits the game (closes the window)
-def quit(root): # Closes the program.
+
+'''Quits the game (closes the window)'''
+def quit(root):
     root.destroy()
 
 # G.U.I
