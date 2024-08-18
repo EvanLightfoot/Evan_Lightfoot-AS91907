@@ -6,298 +6,314 @@ import random as r
 import re
 from tkinter import *
 class Game:
-    def __init__(self, loc_num=None, points=0, additive=3, rnd=1, guess=None, time=0, correct=None, incorrect=None, feedback_msg=None, win=None, max_rounds=11): # Defines and sets the attribute states.
-        '''Instance variables'''
+    # Constants
+    max_characters = 13 # Caps the guess length for user experience so they stick to short, rapid fire guesses.
+    max_rounds = 11 # There are 10 rounds, but the game starts at round 1 which is actually round 0 but is shown as round 11.
+    time_increment = 1000 # 1000ms == 1s
+    num_of_images = 30 # There are 30 images that the program will cycle through.
+    max_points = 30 # There are a maximum of 30 points available.
+    additive_penalty = 1 # Minus one point if the user guesses incorrectly (caps at one point)
+    max_time = 1000 # Stops the game after 15 minutes as the user is likely not playing anymore. The game is expected to take 3 minutes or less and stopping will save resources.
+    
+    # Instance Variables
+    def __init__(self, loc_num=None, points=0, additive=3, rnd=1, guess=None, time=0, output_msg=None): # Defines and sets the attribute states.
+        '''Defines the instance variables which are frequently calculated, updated or returned as derived values'''
         self.loc_num = loc_num # The image name and therefore the line the answers to that image are located.
-        self.points = points # Amount of points the user has.
-        self.points_label = None # Displays the amount of points on screen.
-        self.additive = additive # 3 points on first guess if correct, 2 points on second guess, 1 point all others.
-        self.rnd = rnd # The current round (rnd) number since there are 10 rounds.
-        self.rnd_label = None
         self.guess = guess # The users guess.
+        self.additive = additive # 3 points on first guess if correct, 2 points on second guess, 1 point all others.
+        self.points = points # Amount of points the user has.
+        self.rnd = rnd # The current round (rnd) number since there are 10 rounds.
         self.time = time # The users elapsed game time.
-        self.time_label = None
-        self.correct = correct # Correct label so it can be destroyed/recreated within the instance on correct guess.
-        self.incorrect = incorrect
-        self.feedback_msg = None
+        self.output_msg = None # This is dynamically updated according to the intended output message.
         self.continue_timer = True # Will end the game if set to false.
-        self.win = win
-        self.max_rounds = max_rounds
 
-    def get_guess(self, root):
-        max_characters = 13
-        '''Gets the guess (text) from the guess_text_box entry box'''
-        if self.continue_timer == False:
+    def start_game(self, root):
+        if self.rnd == self.max_rounds:
             pass
+        elif self.time == 0:
+            self.update_time(root)
+        self.get_guess(root)
+        
+    def get_guess(self, root):
+        '''Fetches the guess from the guess_text_box entry box and validates it by removing
+        numbers, special characters, punctuation and spaces as no answers include these attributes.'''
+        self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess.
+        if self.guess == '': # If the user didn't enter anything but submitted their guess, do not proceed.
+            self.clear_labels(root)
+            output_text = Label(output_msg_frame, text='Type in the guess box below!', bg='aqua', fg='darkred', font=('Calibri', '20', 'bold'))
+            self.output_msg = output_text # Sets the output message, this is more robust than creating a new label each time.
+            self.output_msg.pack()
+        elif len(self.guess) > self.max_characters: # If the users guess is more than 13 letters.
+            self.clear_labels(root)
+            output_text = Label(output_msg_frame, text='Your guess is too long, most answers are around 5 to 13 letters.', bg='aqua', fg='darkred', font=('Calibri', '20', 'bold'))
+            self.output_msg = output_text
+            self.output_msg.pack()
+            guess_text_box.delete(0, END) # Clears the guess box of any text so the user may guess again.
         else:
-            self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess so it can be validated easily.
-            if self.guess == "": # If the user didn't enter anything but submitted their guess
-                try:
-                    self.feedback_msg.destroy() # Destroys the old label (if there is one), otherwise do nothing.
-                except AttributeError:
-                    pass
-                self.feedback_msg = Label(root, text="Type in the guess box below!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
-                self.feedback_msg.place(relx=0.5, rely=0.12, anchor=CENTER)
-            elif len(self.guess) > max_characters: # If the users guess is more than 15 letters.
-                try:
-                    self.feedback_msg.destroy()
-                except AttributeError:
-                    pass
-                self.feedback_msg = Label(root, text="Your guess is too long, most answers are around 5 to 13 letters.", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
-                self.feedback_msg.place(relx=0.5, rely=0.12, anchor=CENTER)
-                guess_text_box.delete(0, END) # Clears the guess box so its ready for the user to guess again.
-            else:
-                try:
-                    self.feedback_msg.destroy()
-                except AttributeError:
-                    pass
-                validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
-                self.guess = validated_guess # Updates self.guess.
-                guess_text_box.delete(0, END)
-                return self.guess, self.get_answer()
+            self.clear_labels(root)
+            validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
+            self.guess = validated_guess # Updates the self.guess so it can be processed in update_game_state()
+            guess_text_box.delete(0, END)
+            return self.guess, self.get_answer()
 
     def get_answer(self):
-        '''Fetches the answer for the current image'''
-        with open("Assets/answer_sheet.txt", 'r') as answers: # Answers are stored in this txt file for organisation and maintenance.
-            data = answers.readlines() # Reads the txt file.
-            line = data[self.loc_num -1].lower() # Finds the line which the answer is located in (-1 because the txt file is read from line 0 not line 1.
-            answers = line.split() # Splits the line up into words (possible answers)
-            return answers, self.update_game_state(answers) # Returns the acceptable answers so the self.guess can be processed.
+        '''Fetches the answer for the current image from the answer_sheet text file.'''
+        with open('Assets/answer_sheet.txt', 'r') as answers:
+            data = answers.readlines() # Reads the text file.
+            line = data[self.loc_num -1].lower() # Finds the line which the answer is located in (the '-1' is because the text file is read from line 0 instead of line 1)
+            answers = line.split() # Splits the line up into words, i.e. All of the possible answers.
+            return answers, self.update_game_state(answers) # Returns all of the potential answers so the guess can be marked as correct/incorrect in update_game_state()
 
     def update_game_state(self, answers):
-        additive_penalty = 1
-        '''Updates the game statistics: Points, Round number, IntVar's (points/time/rnd labels) and handles the correct/incorrect label.'''
-        for answer in [answer for answer in answers if answer.lower() in self.guess.lower()]: # Check every possible answer to see if the answer lies within self.guess.         
-            if self.rnd == 1:
-                self.update_time(root)              
-            self.points += self.additive # Add the additive value +3+ on first guess if its correct, +2 on second guess, +1 on all others.
-            self.rnd += 1 # Update the round number.
-            try:
-                self.incorrect.destroy() # Destroys the old incorrect label (if there is one)
-            except AttributeError: # If there isn't an incorrect label, do nothing.
-                pass
-            try:
-                self.correct.destroy() # Destroys the old correct label (if there is one)
-            except AttributeError:
-                pass
-            points_val = IntVar(value=self.points) # Sets the points value thats displayed on screen.
-            self.correct = Label(root, text="Correct!", bg="#00FFFF", fg='green', font=("Calibri", "20", "bold"))
-            self.correct.place(relx=0.5, rely=0.12, anchor=CENTER)
-            points_val.set(self.points)
+        '''Updates the game statistics: Points and round number on correct guess and outputs whether the user was correct or not.'''
+        for answer in [answer for answer in answers if answer.lower() in self.guess.lower()]: # For every answer in the file, check if the answer lies within the guess.           
+            self.points += self.additive # Adds the additive value '+3' on first guess if its correct, +2 on second guess and +1 on all others to the total points.
+            self.rnd += 1 # Updates the round number.
+            self.clear_labels(root)
+            output_text = Label(output_msg_frame, text='Correct!', bg='aqua', fg='green', font=('Calibri', '20', 'bold'))
+            self.output_msg = output_text
+            self.output_msg.pack()
+            points_val = IntVar(value=self.points)  
+            points_val.set(self.points) # Sets the displayed points value.
             self.points_label.config(textvariable=points_val)                
-            if self.rnd == self.max_rounds: # There are only 10 rounds in the game, so round 11 means the game is done.
-                rnd_val = IntVar(value=self.rnd-1) # Round 11 is actually round 10.
+            if self.rnd == self.max_rounds: # Game is over since its round 10.
+                rnd_val = IntVar(value=self.rnd-1) # Round 11 is actually round 10 since 'round 0' is round 1.
                 return self.game_end(root) # Ends the game.
             rnd_val = IntVar(value=self.rnd)                         
             rnd_val.set(self.rnd)
             self.rnd_label.config(textvariable=rnd_val)
             return self.points, self.rnd, self.get_loc(root)
-        else: # If the user guessed incorrect.
-            try:
-                self.correct.destroy()
-            except AttributeError:
-                pass
-            try:
-                self.incorrect.destroy()
-            except AttributeError:
-                pass
+        else: # If the user guessed incorrectly.
+            self.clear_labels(root)
             if self.additive > 1: # Additive reductions cap at 1, otherwise the user would get no points or negative points.
-                self.additive -= additive_penalty
-            self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
-            self.incorrect.place(relx=0.5, rely=0.12, anchor=CENTER)
+                self.additive -= self.additive_penalty
+            output_text = Label(output_msg_frame, text='Incorrect!', bg='aqua', fg='darkred', font=('Calibri', '20', 'bold'))
+            self.output_msg = output_text
+            self.output_msg.pack()
             return self.additive # So points can continue to be reduced if the user keeps guessing wrong on the same round.
 
     def replay(self, root):
-        '''Allows the user to reset the game or play again'''
-        if self.continue_timer:
-            pass
-        else:
-            self.continue_timer = True # Stops the timer so the user can start guessing on their own time and restart it.
-        try:
-            self.game_win.destroy() # If the user wanted to play again and won last game.
-        except AttributeError:
-            pass
-        self.additive = 3 # Default values are set, effectively resetting the game.
+        self.continue_timer = False
+        '''Allows the user to replay the game by resetting all variables to their default values.'''
+        self.clear_labels(root)
+        self.additive = 3
         self.points = 0
         self.rnd = 1
         self.time = 0
-        try:
-            self.correct.destroy() # Clears any correct labels that may be present.
-        except AttributeError:
-            pass
-        try:
-            self.incorrect.destroy()
-        except AttributeError:
-            pass
-        self.time_label.config(textvariable=IntVar(value=0), bg='white', fg='black', font=("Calibri", "18", "bold")) # Resets the displayed values on screen to default.
-        self.points_label.config(textvariable=IntVar(value=0), fg='black', bg='white', font=("Calibri", "18", "bold"))
-        self.rnd_label.config(textvariable=IntVar(value=1), fg='black', bg='white', font=("Calibri", "18", "bold"))
+        self.clear_labels(root) # Clears any existing labels.
+        self.time_label.config(textvariable=IntVar(value=0), bg='white', fg='black', font=('Calibri', '18', 'bold')) # Resets the displayed values on screen to default.
+        self.points_label.config(textvariable=IntVar(value=0), fg='black', bg='white', font=('Calibri', '18', 'bold'))
+        self.rnd_label.config(textvariable=IntVar(value=1), fg='black', bg='white', font=('Calibri', '18', 'bold'))
         return self.points, self.rnd, self.additive, self.time, self.continue_timer
 
     def get_loc(self, root):
-        '''Generates a random location image.png and displays it.'''
+        '''Fetches a random image from the assets folder and displays it.'''
         self.additive = 3 # Sets the additive value to default
         try:
-            self.loc_label.destroy() # Deletes the old image if there is one.
+            self.loc_label.destroy() # Deletes the existing image if there is one.
         except AttributeError:
             pass
-        num_of_images = 30
-        loc_generate = r.randint(1, num_of_images)  # Generates a random location img since image names are labeled from one to thirty i.e Loc1.
-        self.loc_num = loc_generate # Sets the loc_num so it can be used for getting the answers (number is the same as the line the answers are on -1)
-        self.loc_set = f"Loc{loc_generate}"  # Open the location image with that filename.
-        self.loc_img = PhotoImage(file=f"Assets/{self.loc_set}.png") # Opens the generated loc img from the assets folder.
-        self.img_frame = Frame(root, bg='black', highlightbackground="white", highlightthickness=1)
-        self.img_frame.place(relx=0.5, rely=0.4744, anchor=CENTER, relwidth=0.478, relheight=0.63)
-        self.loc_label = Label(self.img_frame, image=self.loc_img, bg='white')
-        self.loc_label.image = self.loc_img # Keeps a reference image for the image so its not garbage collected by tkinter.
-        self.loc_label.place(relx=0.498, rely=0.497, anchor=CENTER, relwidth=1, relheight=0.998)  # Adjusts the image size to fit in the frame.
+        loc_generate = r.randint(1, self.num_of_images)  # Generates a random img value since image names are labeled from one to thirty (num_of_images) e.g. Loc12.
+        self.loc_num = loc_generate # Sets the value to loc_num so it can be used for getting the answers (number is the same as the line the answers are on -1)
+        loc_set = f'Loc{loc_generate}'  # Creates the filename.
+        self.loc_img = PhotoImage(file=f'Assets/{loc_set}.png') # Opens the file from the assets folder.
+        self.loc_label = Label(img_frame, image=self.loc_img, bg='white')
+        self.loc_label.image = self.loc_img # Keeps a reference image for the image so it is not garbage collected by tkinter.
+        self.loc_label.pack()  # Adjusts the image size to fit within the frame.
         return self.loc_num, self.additive
 
     def skip(self):
-        '''Allows the user to skip an image if they don't know it or do not want to guess it'''
-        if self.continue_timer == False: # So the user can't skip if the games over.
+        '''Allows the user to skip if they don't know where an image is or do not want to guess it'''
+        if self.continue_timer == False: # Disables skipping if the game is over.
             pass
         else:
             self.additive = 3
             return self.additive, self.get_loc(root)
 
     def update_time(self, root):
-        time_increment = 1000
         '''Updates the users elapsed time independantly from other methods'''
-        if self.continue_timer: # While the game is active.
-            self.time += time_increment / 1000 # Add 1 second.
-            time_val = StringVar()
-            time_val.set(str(self.time) + "s") # Updates the displayed time label on screen.
-            self.time_label.config(textvariable=time_val, bg='white', fg='black', font=("Calibri", 18, "bold"))
-            root.after(time_increment, lambda: self.update_time(root)) # After each second, recall the method so the time can be updated again.
+        if self.time == self.max_time:
+            root.destroy()
         else:
-            self.process_time() # If the game has ended, process the time.
+            if self.continue_timer: # While the game is active.
+                self.time += (self.time_increment / self.time_increment) # Adds the time increment to the elapsed time.
+                time_val = StringVar()
+                time_val.set(str(self.time) + 's') # Updates the displayed time on screen.
+                self.time_label.config(textvariable=time_val, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+                root.after(self.time_increment, lambda: self.update_time(root)) # Recall the method again so the time can be updated continuously each second.
+            else:  # If the game has ended, process the time.
+                if self.rnd == self.max_rounds:
+                    self.process_time()
+                else:
+                    self.continue_timer = True
  
     def game_end(self, root):
-        '''Ends the game'''
-        try:
-            self.game_win.destroy() # Incase the user has played before.
-        except AttributeError:
-            pass
-        self.game_win = Label(root, text="You Win! Click 'Replay' to play again!", bg="#00FFFF", fg='green', font=("Calibri", "20", "bold"))
-        self.game_win.place(relx=0.5, rely=0.12, anchor=CENTER)
-        self.continue_timer = False # Stops the timer.
+        '''Ends the game by disabling the buttons and stopping the timer'''
+        self.clear_labels(root)
+        output_text = Label(output_msg_frame, text='You Win! Click Replay to play again!', bg='aqua', fg='green', font=('Calibri', '20', 'bold'))
+        self.output_msg = output_text
+        self.output_msg.pack()
+        self.continue_timer = False # Stops the timer since it will only recall if continue_timer == True.
         return self.continue_timer
 
     def process_time(self):
         '''Processes the elapsed time which determines if the user is eligible for a leaderboard placement'''
-        leaderboard_position = 0 # Their current position is 0.
-        with open("Assets/leaderboard.txt", 'r') as leaderboard: # Opens the leaderboard txt file where the top five fastest times are recorded.
-            lb_data = [line.strip() for line in leaderboard]
-            for i, time in enumerate(lb_data): # Checks all times in the leaderboard file.
-                if self.time < int(time): # If the time is less than a leaderboard time.
-                    lb_data.insert(i, str(self.time)) # Inserts the time.
-                    lb_data = lb_data[:5] # Takes the top 5 positions.
-                    leaderboard.close()
+        with open('Assets/leaderboard.txt', 'r') as leaderboard: # Opens the leaderboard txt file where the top five fastest times are recorded.
+            lb_data = [time.strip() for time in leaderboard] # Reads the times in the file.
+            split_lb_data = [time for time in lb_data]
+            for i, time in enumerate(split_lb_data):
+                if self.time < float(time):
+                    lb_data.insert(i, str(self.time)) # Take hold of the old times position.
+                    lb_data.pop(5)
                     break
-                else:
-                    leaderboard_position += 1
-            with open("Assets/leaderboard.txt", 'w') as leaderboard:
-                leaderboard.write('\n'.join(lb_data)) # Writes the positions to the txt file so they can be stored and updated in the txt variables within the lb widget.
-                leaderboard.close()
-                return self.leaderboard(root)
+        with open('Assets/leaderboard.txt', 'w') as leaderboard:
+            leaderboard.write('\n'.join(lb_data)) # Writes the new time to the txt file so it can be displayed and stored for the future.
+            leaderboard.close()
+            return self.get_leaderboard(root)
 
-    def leaderboard(self, root):
-        '''Leaderboard'''
-        leaderboard_frame = Frame(root, bg='white', width=250, height=300, highlightbackground="black", highlightthickness=5)
-        leaderboard_frame.place(relx=0.16, rely=0.587, anchor=CENTER)
-        leaderboard_title = Label(root, text="Leaderboard", bg='white', fg='darkblue', font=("Calibri", "20", "bold", "underline"))
-        leaderboard_title.place(relx=0.105, rely=0.4)
-        leaderboard_pos1_time = StringVar()
-        leaderboard_pos2_time = StringVar()
-        leaderboard_pos3_time = StringVar()
-        leaderboard_pos4_time = StringVar()
-        leaderboard_pos5_time = StringVar()
-        with open("Assets/leaderboard.txt", 'r') as leaderboard: # Opens the leaderboard txt file where the fastest times are recorded.
+    def get_leaderboard(self, root):
+        '''Leaderboard widgets'''
+        with open('Assets/leaderboard.txt', 'r') as leaderboard: # Opens the leaderboard txt file where the fastest times are recorded.
             lb_data = [line.strip() for line in leaderboard.readlines()]
-            leaderboard_pos1_time.set(str("1st:  " + lb_data[0]) + "s") # Sets the time for position 1 since its the first line in the leaderboard txt file.
-            leaderboard_pos2_time.set(str("2nd:  " + lb_data[1]) + "s")
-            leaderboard_pos3_time.set(str("3rd:  " + lb_data[2]) + "s")
-            leaderboard_pos4_time.set(str("4th:  " + lb_data[3]) + "s")
-            leaderboard_pos5_time.set(str("5th:  " + lb_data[4]) + "s")
-        leaderboard_pos1_label = Label(root, textvariable=leaderboard_pos1_time, bg='white', fg='black', font=("Calibri", "14", "bold"))
-        leaderboard_pos1_label.place(relx=0.09, rely=0.5)
-        leaderboard_pos2_label = Label(root, textvariable=leaderboard_pos2_time, bg='white', fg='black', font=("Calibri", "14", "bold"))
-        leaderboard_pos2_label.place(relx=0.09, rely=0.55)
-        leaderboard_pos3_label = Label(root, textvariable=leaderboard_pos3_time, bg='white', fg='black', font=("Calibri", "15", "bold"))
-        leaderboard_pos3_label.place(relx=0.09, rely=0.6)
-        leaderboard_pos4_label = Label(root, textvariable=leaderboard_pos4_time, bg='white', fg='black', font=("Calibri", "15", "bold"))
-        leaderboard_pos4_label.place(relx=0.09, rely=0.65)
-        leaderboard_pos5_label = Label(root, textvariable=leaderboard_pos5_time, bg='white', fg='black', font=("Calibri", "15", "bold"))
-        leaderboard_pos5_label.place(relx=0.09, rely=0.7)
+            leaderboard_pos1_time.set(str('1st:   ' + lb_data[0]) + 's') # Sets the time for positions from the text file.
+            leaderboard_pos2_time.set(str('2nd:  ' + lb_data[1]) + 's')
+            leaderboard_pos3_time.set(str('3rd:  ' + lb_data[2]) + 's')
+            leaderboard_pos4_time.set(str('4th:  ' + lb_data[3]) + 's')
+            leaderboard_pos5_time.set(str('5th:  ' + lb_data[4]) + 's')
+        leaderboard_pos1_label.configure(textvariable=leaderboard_pos1_time, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+        leaderboard_pos2_label.configure(textvariable=leaderboard_pos2_time, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+        leaderboard_pos3_label.configure(textvariable=leaderboard_pos3_time, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+        leaderboard_pos4_label.configure(textvariable=leaderboard_pos4_time, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+        leaderboard_pos5_label.configure(textvariable=leaderboard_pos5_time, bg='white', fg='black', font=('Calibri', '18', 'bold'))
         leaderboard.close()
     
+    def clear_labels(self, root):
+        try:
+            self.output_msg.destroy() # Deletes the old label if there is one as it is no longer needed.
+        except AttributeError: # If there is no label, do not do anything.
+            pass
+        
 instance = Game() # Creates the object.
 def quit(root):
     '''Quits the game: closes the GUI'''
     root.destroy()
 
-# G.U.I
-root = Tk() # Initialises the window.
-root.resizable(False, False) # Locks the window size to prevent re-sizing.
-root.state('zoomed') # Makes the window fullscreen.
-root.title("Howick College GeoGuesser V3.0")
-root.configure(background='#00FFFF') # Aqua coloured background.
-title_banner = Frame(root, bg="#03055B", height=50)
-title_banner.pack(fill="x")
-title = Label(root, text="Howick College GeoGuesser 2024", bg='#03055B', fg='white', font=("Calibri", "30", "bold"))
-title.place(relx=0.5, rely=0.03, anchor=CENTER)
+'''G.U.I'''
+# Main Configuration
+root = Tk() # Opens the window (GUI)
+root.resizable(False, False) # Locks the window size to prevent re-sizing which could make the program unplayable.
+root.state('zoomed') # Makes the window fullscreen so everything can be displayed on the GUI.
+root.title('Howick College GeoGuesser V3.0') # Program title.
+root.configure(background='aqua') # Aqua coloured background.
+title_banner = Frame(root, bg='#03055B', height=10)
+title_banner.pack(fill='x')
+title = Label(title_banner, text='Howick College GeoGuesser 2024', bg='#03055B', fg='#d3b846', font=('Calibri', '30', 'bold'))
+title.pack(pady=5)
+output_msg_frame = Frame(root, bg='aqua')
+output_msg_frame.pack(anchor='n')
+space_placeholder = Label(output_msg_frame, text='\n\n', bg='aqua')
+space_placeholder.pack(side='right')
+main_frame = Frame(root, bg='aqua')
+main_frame.pack(pady=(0, 0))
 
-'''Get Guess Widgets'''
-guess = StringVar() # Initialises the EntryBox as a string variable so I can get their guesses.
-guess_text_box = Entry(root, textvariable=guess, width=35, highlightbackground="black", highlightthickness="1", font=("Calibiri", "11"))
-guess_text_box.place(relx=0.5, rely=0.9, anchor=CENTER)
-guess_text_box_label = Label(root, text="Location:", fg="black", bg='#00FFFF', font=("Calibri", "20", "bold"))
-guess_text_box_label.place(relx=0.347, rely=0.898, anchor=CENTER)
+# Leaderboard Set Up
+leaderboard_frame = Frame(main_frame, bg='white', width=250, height=300, highlightbackground='black', highlightthickness=2)
+leaderboard_frame.pack(side='left', anchor='nw', pady=5, padx=1)
+leaderboard_pos1_time = StringVar()
+leaderboard_pos2_time = StringVar()
+leaderboard_pos3_time = StringVar()
+leaderboard_pos4_time = StringVar()
+leaderboard_pos5_time = StringVar()
+leaderboard_title = Label(leaderboard_frame, text='Leaderboard', bg='white', fg='darkblue', font=('Calibri', '20', 'bold', 'underline'))
+leaderboard_title.pack()
+leaderboard_pos1_label = Label(leaderboard_frame)
+leaderboard_pos1_label.pack(side='top', anchor='nw')
+leaderboard_pos2_label = Label(leaderboard_frame)
+leaderboard_pos2_label.pack(side='top', anchor='nw')
+leaderboard_pos3_label = Label(leaderboard_frame)
+leaderboard_pos3_label.pack(side='top', anchor='nw')
+leaderboard_pos4_label = Label(leaderboard_frame)
+leaderboard_pos4_label.pack(side='top', anchor='nw') 
+leaderboard_pos5_label = Label(leaderboard_frame)
+leaderboard_pos5_label.pack(side='top', anchor='nw')   
 
-'''Buttons'''
-guess_btn = Button(root, text="Guess", borderwidth="2", width="13", bg='lime', fg='black', font=("Calibri", "15", "bold"),command=lambda:instance.get_guess(root))
-guess_btn.place(relx=0.689, rely=0.83, anchor=CENTER)
-quit_btn = Button(root, text="Quit", borderwidth="2", width="13", bg='red', fg='black', font=("Calibri", "15", "bold"),command=lambda:quit(root))
-quit_btn.place(relx=0.311, rely=0.83, anchor=CENTER)
-replay_btn = Button(root, text="Replay", borderwidth="2", width="13", bg='red', fg='black', font=("Calibri", "15", "bold"),command=lambda:instance.replay(root))
-replay_btn.place(relx=0.41, rely=0.83, anchor=CENTER)
-skip_btn = Button(root, text="Skip", borderwidth="2", width="13", bg='red', fg='black', font=("Calibri", "15", "bold"),command=lambda:instance.skip())
-skip_btn.place(relx=0.5, rely=0.83, anchor=CENTER)
+# Guess Widgets
+guess = StringVar() # Initialises the entry box as a string variable so I can get the users guess.
+guess_text_box = Entry(root, textvariable=guess, width=35, highlightbackground='black', highlightthickness='1', font=('Calibiri', '15'))
+guess_text_box.pack(side='bottom', pady=(0, 20))
+guess_text_box_label = Label(root, text='Guess:', fg='black', bg='aqua', font=('Calibri', '20', 'bold'))
+guess_text_box_label.pack(side='bottom', padx=5)
 
-'''How to play Frame'''
-how_to_play_frame = Frame(root, bg='white', width=340, height=469, highlightbackground="black", highlightthickness=5)
-how_to_play_frame.place(relx=0.875, rely=0.474, anchor=CENTER)
-how_to_play_title = Label(root, fg="darkblue", bg='white', text="How to play?", font=("Calibri", "20", "bold", "underline"))
-how_to_play_title.place(relx=0.87, rely=0.194, anchor=CENTER)
-how_to_play_text = Label(root, bg='white', fg="black", text="\n- Type your guess in the 'location' box\n\n- Ensure that you use correct grammar and clear guesses.\n\n- Gather as many points as possible by guessing correctly!\n\n- Use the buttons below to skip, quit, reset and guess.\n\n- There are 10 rounds, but there are 30 points to get! \n\n +3 points if you guess a location first try, +2 on second try! \n\n- Any more guesses give +1, so good luck and have fun! \n\n- Also there is a timer, try and guess as fast as possible!")
-how_to_play_text.place(relx=0.872, rely=0.38, anchor=CENTER)
-how_to_play_text.config(state='disabled')
+# Buttons
+button_frame = Frame(main_frame, bg='aqua')
+button_frame.pack(side='bottom', anchor='s', ipadx=72, pady=(0, 20))
+quit_btn = Button(button_frame, text='Quit', borderwidth='2', width='13', bg='red', fg='black', font=('Calibri', '15', 'bold'),command=lambda:quit(root))
+quit_btn.pack(side='left')
+replay_btn = Button(button_frame, text='Replay', borderwidth='2', width='13', bg='red', fg='black', font=('Calibri', '15', 'bold'),command=lambda:instance.replay(root))
+replay_btn.pack(side='left')
+skip_btn = Button(button_frame, text='Skip', borderwidth='2', width='13', bg='red', fg='black', font=('Calibri', '15', 'bold'),command=lambda:instance.skip())
+skip_btn.pack(side='left')
+submit_btn = Button(button_frame, text='Submit', borderwidth='2', width='13', bg='lime', fg='black', font=('Calibri', '15', 'bold'),command=lambda:instance.start_game(root))
+submit_btn.pack(side='left', padx=(78, 0))
 
-'''Game Stats Frame'''
-game_stats_frame = Frame(root, bg='white', width=250, height=150, highlightbackground="black", highlightthickness=5)
-game_stats_frame.place(relx=0.16, rely=0.26, anchor=CENTER)
-points_text = Label(root, text="Points:", bg='white', fg='black', font=("Calibri", "18", "bold"))
-points_text.place(relx=0.102, rely=0.203, anchor=CENTER)
-out_of_divider1 = Label(root, text="/", bg='white', fg='black', font=("Calibri", "18", "bold"))
-out_of_divider1.place(relx=0.16, rely=0.203, anchor=CENTER)
-out_of_30 = Label(root, text="30", bg='white', fg='black', font=("Calibri", "18", "bold"))
-out_of_30.place(relx=0.18, rely=0.203, anchor=CENTER)
-instance.points_label = Label(root, textvariable=IntVar(value=0), bg='white', fg='black', font=("Calibri", "18", "bold"))
-instance.points_label.place(relx=0.14, rely=0.203, anchor=CENTER)
-rnd_text = Label(root, text="Round:", bg='white', fg='black', font=("Calibri", "18", "bold"))
-rnd_text.place(relx=0.102, rely=0.25, anchor=CENTER)
-instance.rnd_label = Label(root, textvariable=IntVar(value=1), bg='white', fg='black', font=("Calibri", "18", "bold"))
-instance.rnd_label.place(relx=0.14, rely=0.25, anchor=CENTER)
-out_of_divider2 = Label(root, text="/", bg='white', fg='black', font=("Calibri", "18", "bold"))
-out_of_divider2.place(relx=0.16, rely=0.25, anchor=CENTER)
-round_10_label = Label(root, text="10", bg='white', fg='black', font=("Calibri", "18", "bold"))
-round_10_label.place(relx=0.18, rely=0.25, anchor=CENTER)
-time_text = Label(root, text="Time:", bg='white', fg='black', font=("Calibri", "18", "bold"))
-time_text.place(relx=0.098, rely=0.3, anchor=CENTER)
-instance.time_label = Label(root, textvariable=IntVar(value=0), bg='white', fg='black', font=("Calibri", "18", "bold"))
-instance.time_label.place(relx=0.14, rely=0.3, anchor=CENTER)
-'''Start Game'''
-instance.leaderboard(root)
+# How to play Frame
+how_to_play_frame = Frame(main_frame, bg='white', width=340, height=500, highlightbackground='black', highlightthickness=2)
+how_to_play_frame.pack(side='right', anchor='ne', pady=5)
+how_to_play_title = Label(how_to_play_frame, fg='darkblue', bg='white', text='How to play?', font=('Calibri', '20', 'bold', 'underline'))
+how_to_play_title.pack()
+how_to_play_text = Label(how_to_play_frame, bg='white', fg='black', text='\n- Type your guess in the Guess box\n\n- Ensure that you use correct grammar.\n\n- Use the buttons below to skip, quit, replay and guess.\n\n- There are 10 rounds, but there are 30 points to get! \n\n +3 points if you guess on your first try, +2 on second try! \n\n- Correct guesses after two tries give +1 point \n\n- Gather as many points as you can by guessing correctly!\n\n- Also there is a timer, try and guess as fast as possible!\n\n-Good luck and have fun!')
+how_to_play_text.pack()
+crest_img = PhotoImage(file='Assets/crest.png')
+crest_img_label = Label(how_to_play_frame, image=crest_img, bg='white')
+crest_img_label.pack(side='right')
+
+# Game Stats Frame
+game_stats_frame = Frame(main_frame, bg='white', width=170, height=176.3, highlightbackground='black', highlightthickness=2)
+game_stats_frame.pack(side='left', anchor='nw', pady=5, ipady=20.5) # Packs the frame to the top left of the main_frame
+game_stats_frame.pack_propagate(False) # Prevents the game_stats_frame from resizing at round 10 to accomodate space for the extra digit as this disalignes all the widgets.
+game_stats_header = Label(game_stats_frame, text='Game Stats', bg='white', fg='darkblue', font=('Calibri', '20', 'bold', 'underline'))
+game_stats_header.pack(side='top', anchor='w')
+
+# Rnd Widgets
+rnd_frame = Frame(game_stats_frame, bg='white')
+rnd_frame.pack(side='top', fill='x', anchor='nw')
+rnd_header = Label(rnd_frame, text='Round:', bg='white', fg='black', font=('Calibri', '18', 'bold'))
+rnd_header.pack(side='left', anchor='nw')
+instance.rnd_label = Label(rnd_frame, textvariable=IntVar(value=1), bg='white', fg='black', font=('Calibri', '18', 'bold'))
+instance.rnd_label.pack(side='left')
+rnd_separator = Label(rnd_frame, text='/', bg='white', fg='black', font=('Calibri', '18', 'bold'))
+rnd_separator.pack(side='left')
+total_rnd = instance.max_rounds - 1
+total_rnd_var = IntVar()
+total_rnd_var.set(total_rnd)
+total_rnd_text = Label(rnd_frame, textvariable=total_rnd_var, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+total_rnd_text.pack(side='left')
+
+# Points Widgets
+points_frame = Frame(game_stats_frame, bg='white')
+points_frame.pack(side='top', fill='x', anchor='nw')
+points_header = Label(points_frame, text='Points:', bg='white', fg='black', font=('Calibri', '18', 'bold'))
+points_header.pack(side='left')
+instance.points_label = Label(points_frame, textvariable=IntVar(value=0), bg='white', fg='black', font=('Calibri', '18', 'bold'))
+instance.points_label.pack(side='left')
+points_separator = Label(points_frame, text='/', bg='white', fg='black', font=('Calibri', '18', 'bold'))
+points_separator.pack(side='left')
+total_points_var = IntVar()
+total_points_var.set(instance.max_points)
+total_points = Label(points_frame, textvariable=total_points_var, bg='white', fg='black', font=('Calibri', '18', 'bold'))
+total_points.pack(side='left')
+
+# Time Widgets
+time_frame = Frame(game_stats_frame, bg='white')
+time_frame.pack(side='top', fill='x', anchor='nw')
+time_header = Label(time_frame, text='Time:', bg='white', fg='black', font=('Calibri', '18', 'bold'))
+time_header.pack(side='left')
+instance.time_label = Label(time_frame, textvariable=IntVar(value=0), bg='white', fg='black', font=('Calibri', '18', 'bold')) # The starting time is 0s.
+instance.time_label.pack(side='left')
+
+# On game start
+instance.get_leaderboard(root)
+img_frame = Frame(main_frame, bg='black', highlightbackground='black', highlightthickness=2)
+img_frame.pack(side='top', anchor='center', padx=2, pady=(5, 0))
 instance.get_loc(root) # Calls the get_loc method to display a location image.
-root.mainloop() # Starts the GUI event loop.
+root.mainloop() # Starts the GUI event loop.    
