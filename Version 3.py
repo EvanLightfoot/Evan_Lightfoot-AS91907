@@ -27,60 +27,58 @@ class Game:
             self.continue_timer = True
             self.continue_timer, self.update_time(root)
         self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess so it can be validated easily.
-        validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
-        self.guess = validated_guess # Updates self.guess
         if self.guess == "": # If the user didn't enter anything but submitted their guess, ignore it.
             pass
         else:
+            validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
+            self.guess = validated_guess # Updates self.guess
             return self.guess, self.get_answer() # Validate the guess.
 
     def get_answer(self): # Gets the answer for the current location image.
         with open("Assets/answer_sheet.txt", 'r') as answers:
             data = answers.readlines()
-            line = data[self.loc_num -1].strip().lower() # Finds the line which the answer is located in.
-            words = line.split() # Splits the line up into words (answers).
-            return words, self.update_game_state(words) # Returns the acceptable answers and calls the method which updates the game state.
+            line = data[self.loc_num -1].lower() # Finds the line which the answer is located in.
+            answers = line.split() # Splits the line up into words (answers)
+            return answers, self.update_game_state(answers) # Returns the acceptable answers and calls the method which updates the game state.
 
-    def update_game_state(self, words): # Updates the game statistics e.g. points, rnd number, textvariables, labels on correct guess.
-        for word in words: # For every word in the acceptable answers line within the answer_sheet.txt file, if the guess contains any accepted answer it is correct, e.g. receptionist is correct because reception is an acceptable answer.
-            if self.guess.lower() in [answer.lower() for answer in words if self.guess.lower() in answer.lower()]:
-                '''Updates game stats'''
-                self.points += self.additive
-                self.rnd += 1
-                try:
-                    self.incorrect.destroy() # Destroys the old incorrect label, otherwise it would keep generating a new one if guesses are correct two or more times which would overlay the correct label.
-                except AttributeError:
-                    pass
-                try:
-                    self.correct.destroy() # Destroys the old correct label, otherwise it would keep generating a new one if guesses are correct two or more times which would overlay the incorrect label.
-                except AttributeError:
-                    pass
-                points_val = IntVar(value=self.points)
-                self.correct = Label(root, text="Correct!", bg="#00FFFF", fg='green', font=("Calibri", "20", "bold"))
-                self.correct.place(relx=0.5, rely=0.12, anchor=CENTER)
-                points_val.set(self.points)
-                self.points_label.config(textvariable=points_val)                
-                if self.rnd == 11:
-                    rnd_val = IntVar(value=self.rnd-1)
-                    return self.game_end(root)
-                rnd_val = IntVar(value=self.rnd)                             
-                rnd_val.set(self.rnd)
-                self.rnd_label.config(textvariable=rnd_val)
-                return self.points, self.rnd, self.get_loc(root) # Gets the location for the next rnd since the current one was correctly guessed, also returns all updated values.
-            else:
-                try:
-                    self.correct.destroy()
-                except AttributeError:
-                    pass
-                try:
-                    self.incorrect.destroy()
-                except AttributeError:
-                    pass
-                if self.additive > 1: # Additive reductions cap at 1 otherwise the user would get no points.
-                    self.additive -= 1
-                self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
-                self.incorrect.place(relx=0.5, rely=0.12, anchor=CENTER)
-                return self.additive # Returns new additive value.
+    def update_game_state(self, answers): # Updates the game statistics e.g. points, rnd number, textvariables, labels on correct guess.
+        for answer in [answer for answer in answers if answer.lower() in self.guess.lower()]: # Update game stats for this answer    
+            self.points += self.additive
+            self.rnd += 1
+            try:
+                self.incorrect.destroy() # Destroys the old incorrect label, otherwise it would keep generating a new one if guesses are correct two or more times which would overlay the correct label.
+            except AttributeError:
+                pass
+            try:
+                self.correct.destroy() # Destroys the old correct label, otherwise it would keep generating a new one if guesses are correct two or more times which would overlay the incorrect label.
+            except AttributeError:
+                pass
+            points_val = IntVar(value=self.points)
+            self.correct = Label(root, text="Correct!", bg="#00FFFF", fg='green', font=("Calibri", "20", "bold"))
+            self.correct.place(relx=0.5, rely=0.12, anchor=CENTER)
+            points_val.set(self.points)
+            self.points_label.config(textvariable=points_val)                
+            if self.rnd == 11:
+                rnd_val = IntVar(value=self.rnd-1)
+                return self.game_end(root)
+            rnd_val = IntVar(value=self.rnd)                             
+            rnd_val.set(self.rnd)
+            self.rnd_label.config(textvariable=rnd_val)
+            return self.points, self.rnd, self.get_loc(root) # Gets the location for the next rnd since the current one was correctly guessed, also returns all updated values.
+        else:
+            try:
+                self.correct.destroy()
+            except AttributeError:
+                pass
+            try:
+                self.incorrect.destroy()
+            except AttributeError:
+                pass
+            if self.additive > 1: # Additive reductions cap at 1 otherwise the user would get no points.
+                self.additive -= 1
+            self.incorrect = Label(root, text="Incorrect!", bg="#00FFFF", fg='darkred', font=("Calibri", "20", "bold"))
+            self.incorrect.place(relx=0.5, rely=0.12, anchor=CENTER)
+            return self.additive # Returns new additive value.
 
     def replay(self, root): # Allows user to reset their game.
         self.continue_timer = False
@@ -122,7 +120,7 @@ class Game:
         self.loc_label.image = self.loc_img
         self.loc_label.place(relx=0.498, rely=0.497, anchor=CENTER, relwidth=1, relheight=0.998)  # Adjusts the image size to fit in frame
         return self.loc_num, self.additive  # Returns the name of the generated loc image so the answer for it can be located in the answer sheet in get_answer().
-
+    
     def skip(self): # Allows the user to skip if they don't know the area of a location.
         if self.continue_timer == False:
             pass
@@ -139,27 +137,25 @@ class Game:
             root.after(1000, lambda: self.update_time(root))
         else:   
             self.process_time()
-
+                
     def game_end(self, root):
-        self.continue_timer = False
         guess_btn.config(state='disabled')
+        self.continue_timer = False
         return self.continue_timer
 
     def process_time(self):
-        leaderboard_position = -1
+        leaderboard_position = 0
         with open("Assets/leaderboard.txt", 'r') as leaderboard:
             lb_data = leaderboard.readlines()
-            for time in lb_data:
+            for i, time in enumerate(lb_data):
                 if self.time < int(time):
-                    lb_data.remove(time)
+                    lb_data[i] = str(self.time) + '/n'
                     with open("Assets/leaderboard.txt", 'w') as leaderboard:
-                        leaderboard.writelines(str(self.time ,"/n"))
-        leaderboard_pos1_time.set(str(lb_data[0]) + "s")
-        leaderboard_pos2_time.set(str(lb_data[1]) + "s")
-        leaderboard_pos3_time.set(str(lb_data[2]) + "s")
-        leaderboard_pos4_time.set(str(lb_data[3]) + "s")
-        leaderboard_pos5_time.set(str(lb_data[4]) + "s")
-
+                        leaderboard.writelines(lb_data)
+                    leaderboard.close()
+                else:
+                    leaderboard_position += 1
+              
 instance = Game() # Creates the object.
 # Quits the game (closes the window)
 def quit(root): # Closes the program.
