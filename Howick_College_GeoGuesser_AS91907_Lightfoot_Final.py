@@ -11,13 +11,13 @@ from tkinter import * # Import tkinter so I can use a GUI.
 class Game: # Create a class so I can use instance variables.
     '''My class contains 7 constants and 8 instance variables, the instance variables allow me the game to be coded efficiently and in an organised way.'''
     # Constants
-    max_characters = 15 # Caps the guess length for user experience so they stick to short, rapid fire guesses.
-    max_rounds = 11 # There are 10 rounds, but the game starts at round 1 which is actually round 0 but is shown as round 11.
-    time_increment = 1000 # 1000ms == 1s
-    num_of_images = 30 # There are 30 images that the program will cycle through.
-    max_points = 30 # There are a maximum of 30 points available.
-    additive_penalty = 1 # Minus one point if the user guesses incorrectly (caps at one point)
-    max_time = 1000 # Stops the game after 15 minutes as the user is likely not playing anymore. The game is expected to take 3 minutes or less and stopping will save resources.
+    MAX_CHARACTERS = 15 # Caps the guess length for user experience so they stick to short, rapid fire guesses.
+    MAX_ROUNDS = 11 # There are 10 rounds, but the game starts at round 1 which is actually round 0 but is shown as round 11.
+    TIME_INCREMENT = 1000 # 1000ms == 1s
+    NUM_OF_IMAGES = 30 # There are 30 images that the program will cycle through.
+    MAX_POINTS = 30 # There are a maximum of 30 points available.
+    ADDITIVE_PENALTY = 1 # Minus one point if the user guesses incorrectly (caps at one point)
+    MAX_TIME = 1000 # Stops the game after 15 minutes as the user is likely not playing anymore. The game is expected to take 3 minutes or less and stopping will save resources.
     
     # Instance Variables
     def __init__(self, loc_num=None, points=0, additive=3, rnd=1, guess=None, time=0, output_msg=None): # Defines and sets the attribute states.
@@ -33,7 +33,7 @@ class Game: # Create a class so I can use instance variables.
 
     def start_game(self, root):
         '''Starts the game and the timer on launch'''
-        if self.rnd == self.max_rounds: # If the game is over (round 10 has been reached), do nothing.
+        if self.rnd == self.MAX_ROUNDS: # If the game is over (round 10 has been reached), do nothing.
             pass
         elif self.time == 0: # If the game just started, cal the update_time method to start the timer.
             self.update_time(root)
@@ -42,7 +42,7 @@ class Game: # Create a class so I can use instance variables.
     def get_guess(self, root):
         '''Fetches the guess from the guess_text_box entry box and validates it by removing
         numbers, special characters, punctuation and spaces as no answers include these attributes.'''        
-        if self.rnd == self.max_rounds:
+        if self.rnd == self.MAX_ROUNDS:
             pass
         else:
             self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess.
@@ -51,7 +51,7 @@ class Game: # Create a class so I can use instance variables.
                 output_text = Label(output_msg_frame, text='Type in the guess box below!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
                 self.output_msg = output_text # Sets the output message as "type in the guess box below".
                 self.output_msg.pack() # Displays the output message in the output message frame.
-            elif len(self.guess) > self.max_characters: # If the users guess is more than 15 letters.
+            elif len(self.guess) > self.MAX_CHARACTERS: # If the users guess is more than 15 letters.
                 self.clear_labels(root)
                 output_text = Label(output_msg_frame, text='Answers are 15 letters max!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
                 self.output_msg = output_text
@@ -91,7 +91,7 @@ class Game: # Create a class so I can use instance variables.
             points_val = IntVar(value=self.points) # Sets self.points label as an IntVar() so it can be set as the self.points value.
             points_val.set(self.points) # Sets the displayed points value.
             self.points_label.config(textvariable=points_val) # Displays the points.
-            if self.rnd == self.max_rounds: # Game is over since its round 10.
+            if self.rnd == self.MAX_ROUNDS: # Game is over since its round 10.
                 rnd_val = IntVar(value=self.rnd-1) # Round 11 is actually round 10 since 'round 0' is round 1.
                 return self.game_end(root) # Ends the game.
             rnd_val = IntVar(value=self.rnd) # Sets self.rnd label as an IntVar() so it can be set as the self.rnd value
@@ -101,7 +101,7 @@ class Game: # Create a class so I can use instance variables.
         else: # If the user guessed incorrectly.
             self.clear_labels(root)
             if self.additive > 1: # Additive reductions cap at 1, otherwise the user would get no points or negative points.
-                self.additive -= self.additive_penalty # Subtract the additive value.
+                self.additive -= self.ADDITIVE_PENALTY # Subtract the additive value.
             output_text = Label(output_msg_frame, text='Incorrect!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
             self.output_msg = output_text
             self.output_msg.pack() # Displays the incorrect message.
@@ -127,7 +127,7 @@ class Game: # Create a class so I can use instance variables.
             self.loc_label.destroy() # Deletes the existing image if there is one.
         except AttributeError:
             pass
-        loc_generate = r.randint(1, self.num_of_images)  # Generates a random img value between 1 and 30 (num_of_images) since image names are labeled from one to thirty e.g. Loc12.
+        loc_generate = r.randint(1, self.NUM_OF_IMAGES)  # Generates a random img value between 1 and 30 (NUM_OF_IMAGES) since image names are labeled from one to thirty e.g. Loc12.
         self.loc_num = loc_generate # Sets the value to loc_num so it can be used for getting the answers (number is the same as the line the answers are on -1)
         loc_set = f'Loc{loc_generate}'  # Creates the filename.
         self.loc_img = PhotoImage(file=f'Assets/{loc_set}.png') # Opens the file from the assets folder.
@@ -138,7 +138,7 @@ class Game: # Create a class so I can use instance variables.
 
     def skip(self):
         '''Allows the user to skip if they don't know where an image is or do not want to guess it'''
-        if self.rnd == self.max_rounds: # Disables skipping if the game is over.
+        if self.rnd == self.MAX_ROUNDS: # Disables skipping if the game is over.
             pass
         else:
             self.additive = 3 # Sets the self.additive to its default value.
@@ -146,17 +146,17 @@ class Game: # Create a class so I can use instance variables.
 
     def update_time(self, root):
         '''Updates the users elapsed time independantly from other methods'''
-        if self.time == self.max_time: # If the game has been running for too long (15 minutes), the user is likely not playing anymore so close it to save computer resources.
+        if self.time == self.MAX_TIME: # If the game has been running for too long (15 minutes), the user is likely not playing anymore so close it to save computer resources.
             root.destroy()
         else:
             if self.continue_timer: # While the game is active.
-                self.time += (self.time_increment / self.time_increment) # Adds the time increment of 1000ms to the elapsed time.
+                self.time += (self.TIME_INCREMENT / self.TIME_INCREMENT) # Adds the time increment of 1000ms to the elapsed time.
                 time_val = StringVar()
                 time_val.set(str(self.time) + 's') # Updates the displayed time on screen in seconds.
                 self.time_label.config(textvariable=time_val, bg='white', fg='black', font=('Calibri', '18', 'bold'))
-                root.after(self.time_increment, lambda: self.update_time(root)) # Recall the method again so the time can be updated continuously each second.
+                root.after(self.TIME_INCREMENT, lambda: self.update_time(root)) # Recall the method again so the time can be updated continuously each second.
             else:  # If the game has ended, process the time.
-                if self.rnd == self.max_rounds: # Checks if the game is actually over or if the user just replayed.
+                if self.rnd == self.MAX_ROUNDS: # Checks if the game is actually over or if the user just replayed.
                     self.process_time()
                 else:
                     self.continue_timer = True # Starts the timer back up.
@@ -293,7 +293,7 @@ instance.rnd_label = Label(rnd_frame, textvariable=IntVar(value=1), bg='white', 
 instance.rnd_label.pack(side='left')
 rnd_separator = Label(rnd_frame, text='/', bg='white', fg='black', font=('Calibri', '18', 'bold'))
 rnd_separator.pack(side='left')
-total_rnd = instance.max_rounds - 1 # Sets the total rounds (currently 10)
+total_rnd = instance.MAX_ROUNDS - 1 # Sets the total rounds (currently 10)
 total_rnd_var = IntVar()
 total_rnd_var.set(total_rnd)
 total_rnd_text = Label(rnd_frame, textvariable=total_rnd_var, bg='white', fg='black', font=('Calibri', '18', 'bold'))
@@ -309,7 +309,7 @@ instance.points_label.pack(side='left')
 points_separator = Label(points_frame, text='/', bg='white', fg='black', font=('Calibri', '18', 'bold'))
 points_separator.pack(side='left')
 total_points_var = IntVar()
-total_points_var.set(instance.max_points) # Sets the total points available (currently 30)
+total_points_var.set(instance.MAX_POINTS) # Sets the total points available (currently 30)
 total_points = Label(points_frame, textvariable=total_points_var, bg='white', fg='black', font=('Calibri', '18', 'bold'))
 total_points.pack(side='left')
 
