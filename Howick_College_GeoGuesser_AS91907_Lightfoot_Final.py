@@ -2,6 +2,9 @@
 # Written By: Evan Lightfoot
 # Date: 5/08/2024
 # Version: 3
+# Added Time and Leaderboard Feature.
+# Added Feedback Messages and reliable placement via .pack()
+
 import random as r # Import random so I can generated a random number between 1 (lowest image number) to 30 (highest image number).
 import re # Import re so I can validated guesses easily.
 from tkinter import * # Import tkinter so I can use a GUI.
@@ -38,25 +41,28 @@ class Game: # Create a class so I can use instance variables.
         
     def get_guess(self, root):
         '''Fetches the guess from the guess_text_box entry box and validates it by removing
-        numbers, special characters, punctuation and spaces as no answers include these attributes.'''
-        self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess.
-        if self.guess == '': # If the user didn't enter anything but submitted their guess, do not proceed.
-            self.clear_labels(root) # Call the clear_labels method which clears any existing output_msg (labels)
-            output_text = Label(output_msg_frame, text='Type in the guess box below!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
-            self.output_msg = output_text # Sets the output message as "type in the guess box below".
-            self.output_msg.pack() # Displays the output message in the output message frame.
-        elif len(self.guess) > self.max_characters: # If the users guess is more than 15 letters.
-            self.clear_labels(root)
-            output_text = Label(output_msg_frame, text='Answers are 15 letters max!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
-            self.output_msg = output_text
-            self.output_msg.pack()
-            guess_text_box.delete(0, END) # Clears the guess box of any text so the user may guess again.
+        numbers, special characters, punctuation and spaces as no answers include these attributes.'''        
+        if self.rnd == self.max_rounds:
+            pass
         else:
-            self.clear_labels(root)
-            validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
-            self.guess = validated_guess # Updates the self.guess so it can be processed in update_game_state()
-            guess_text_box.delete(0, END)
-            return self.guess, self.get_answer()
+            self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess.
+            if self.guess == '': # If the user didn't enter anything but submitted their guess, do not proceed.
+                self.clear_labels(root) # Call the clear_labels method which clears any existing output_msg (labels)
+                output_text = Label(output_msg_frame, text='Type in the guess box below!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
+                self.output_msg = output_text # Sets the output message as "type in the guess box below".
+                self.output_msg.pack() # Displays the output message in the output message frame.
+            elif len(self.guess) > self.max_characters: # If the users guess is more than 15 letters.
+                self.clear_labels(root)
+                output_text = Label(output_msg_frame, text='Answers are 15 letters max!', bg='white', fg='darkred', font=('Calibri', '20', 'bold'))
+                self.output_msg = output_text
+                self.output_msg.pack()
+                guess_text_box.delete(0, END) # Clears the guess box of any text so the user may guess again.
+            else:
+                self.clear_labels(root)
+                validated_guess = re.sub('[^A-Za-z]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
+                self.guess = validated_guess # Updates the self.guess so it can be processed in update_game_state()
+                guess_text_box.delete(0, END)
+                return self.guess, self.get_answer()
         
     def clear_labels(self, root):
         '''Clears the feedback message i.e. incorrect, correct, etc.'''
