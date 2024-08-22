@@ -2,6 +2,8 @@
 # Written By: Evan Lightfoot
 # Date: 17/06/2024
 # Version: 1
+# Allows the user to guess, some validation.
+
 import random as r
 
 from tkinter import *
