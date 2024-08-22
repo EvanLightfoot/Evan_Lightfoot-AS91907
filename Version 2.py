@@ -2,13 +2,15 @@
 # Written By: Evan Lightfoot
 # Date: 26/07/2024
 # Version: 2
+# Added Skip and Replay functionality and buttons.
+
 import random as r
 import re
 from tkinter import *
 '''Default values that are passed in'''
 additive = 3
 class Game:
-    def __init__(self, points=0, rnd=1, guess=None, correct=None, incorrect=None, loc_num=None, additive=3): # Sets self values.
+    def __init__(self, points=0, rnd=1, guess=None, correct=None, incorrect=None, loc_num=None, additive=3):
         '''Sets the self values'''
         self.points = points # Amount of points the user has.
         self.rnd = rnd # The current round (rnd) number since there are 10 rounds.
@@ -19,16 +21,18 @@ class Game:
         self.loc_num = loc_num # Loc Num
         self.additive = additive
         
-    def get_guess(self, root): # Gets the guess from the Entry Box
+    def get_guess(self, root): 
+        '''Gets the guess from the Entry Box'''
         self.guess = guess.get().replace(' ', '') # Removes all spaces from the guess so it can be validated easily.
-        validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-alphanumeric characters from the guess as answers are only alphanumeric.
+        validated_guess = re.sub('[^A-Za-z0-9]+', '', self.guess) # Removes all non-letter characters from the guess as answers are only letters.
         self.guess = validated_guess # Updates self.guess
         if self.guess == "": # If the user didn't enter anything but submitted, ignore it.
             pass
         else:
             return self.guess, self.get_answer() # Validate the guess.
             
-    def get_answer(self): # Gets the answer for the current location image.
+    def get_answer(self): 
+        '''Gets the answer for the current location image.'''
         with open("Assets/answer_sheet.txt", 'r') as answers:
             data = answers.readlines()
             line = data[self.loc_num -1].strip().lower() # Finds the line which the answer is located in.
@@ -36,10 +40,10 @@ class Game:
             return words, self.update_game_state(words) # Returns the acceptable answers and calls the method which updates the game state.
         answers.close()
         
-    def update_game_state(self, words): # Updates the game statistics e.g. points, rnd number, textvariables, labels on correct guess.
+    def update_game_state(self, words):
+        '''Updates game stats, e.g. points, rnd number and displays values'''
         for word in words: # For every word in the acceptable answers line within the answer_sheet.txt file, if the guess contains any accepted answer it is correct, e.g. receptionist is correct because reception is an acceptable answer. 
             if word in self.guess:
-                '''Updates game stats'''
                 self.points += self.additive
                 self.rnd += 1
                 points_val = IntVar(value=self.points)
@@ -74,7 +78,8 @@ class Game:
                 self.incorrect.place(x=888, y=887)
                 return self.additive # Returns new additive value.
         
-    def reset(self, root): # Allows user to reset their game.
+    def reset(self, root):
+        '''Allows the user to reset the game'''
         self.additive = 3 # Resets the additive value to default.
         '''Sets game stats to 0'''
         self.points = 0
@@ -88,7 +93,7 @@ class Game:
             self.incorrect.destroy()
         except AttributeError:
             pass
-        '''Resets the IntVar (text that appears on the GUI)'''
+        # Resets the IntVar (text that appears on the GUI)
         points_val = IntVar(value=self.points)
         rnd_val = IntVar(value=self.rnd)
         points_label = Label(root, textvariable=points_val, fg='black', bg='white', font=("Calibri", "16", "bold"))
@@ -99,7 +104,7 @@ class Game:
         
     def get_loc(self, root): # Gets a random location image.png and displays it.
         self.additive = 3
-        '''If there is an existing location image displayed, delete it.'''
+        # If there is an existing location image displayed, delete it.
         try:
             loc_label.destroy()
         except NameError:
@@ -113,7 +118,8 @@ class Game:
         loc_label.place(anchor='center', x=960, y=530) # Ensures the image is placed in the Frame correctly.
         return self.loc_num, self.additive # Returns the name of the generated loc image so the answer for it can be located in the answer sheet in get_answer().
     
-    def skip(self): # Allows the user to skip if they don't know the area of a location.
+    def skip(self): 
+        '''Allows the user to skip if they don't know the area of a location.'''
         self.additive = 3
         return additive, instance.get_loc(root)    
         
