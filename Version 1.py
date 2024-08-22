@@ -2,7 +2,7 @@
 # Written By: Evan Lightfoot
 # Date: 17/06/2024
 # Version: 1
-count = 0
+import random as r
 
 from tkinter import *
 class Game:
@@ -13,42 +13,40 @@ class Game:
         self.correct = correct
         self.incorrect = incorrect
         self.loc_num = loc_num # Loc Num
-
+        
     def get_guess(self, root):
-        global count
         self.guess = guess.get()
         if self.guess == "":
             pass
         else:
             with open("Assets/answer_sheet.txt", 'r') as answers:
                 data = answers.readlines()
-                line = data[count].strip()
-                if self.guess in line:
-                    self.points += 1
-                    self.rnd += 1
-                    count += 1
-                    points_val = IntVar(value=self.points)
-                    rnd_val = IntVar(value=self.rnd) 
-                    try:
-                        self.incorrect.destroy()
-                    except AttributeError:
-                        pass
-                    self.correct = Label(root, text="Correct!", bg="#FFFDD0", fg='green', font=("Calibri", "15", "bold"))
-                    self.correct.place(x=888, y=887)
-                    points_label = Label(root, textvariable=points_val, fg='black', bg='#FFFDD0', font=("Calibri", "16", "bold"))
-                    points_label.place(x=110, y=205)
-                    rnd_label = Label(root, textvariable=rnd_val, fg='black', bg='#FFFDD0', font=("Calibri", "16", "bold"))
-                    rnd_label.place(x=110, y=255)
-                    return self.points, self.rnd, count, self.get_loc(root)
-                else:
-                    try:
-                        self.correct.destroy()
-                    except AttributeError:
-                        pass
-                    self.incorrect = Label(root, text="Incorrect!", bg="#FFFDD0", fg='darkred', font=("Calibri", "15", "bold"))
-                    self.incorrect.place(x=888, y=887)
-            answers.close()    
-
+                line = data[self.loc_num-1].strip()
+                for word in line:
+                    if line in self.guess:
+                        self.points += 1
+                        self.rnd += 1
+                        points_val = IntVar(value=self.points)
+                        rnd_val = IntVar(value=self.rnd) 
+                        try:
+                            self.incorrect.destroy()
+                        except AttributeError:
+                            pass
+                        self.correct = Label(root, text="Correct!", bg="#FFFDD0", fg='green', font=("Calibri", "15", "bold"))
+                        self.correct.place(x=888, y=887)
+                        points_label = Label(root, textvariable=points_val, fg='black', bg='#FFFDD0', font=("Calibri", "16", "bold"))
+                        points_label.place(x=110, y=205)
+                        rnd_label = Label(root, textvariable=rnd_val, fg='black', bg='#FFFDD0', font=("Calibri", "16", "bold"))
+                        rnd_label.place(x=110, y=255)
+                        return self.points, self.rnd, self.get_loc(root)
+                    else:
+                        try:
+                            self.correct.destroy()
+                        except AttributeError:
+                            pass
+                        self.incorrect = Label(root, text="Incorrect!", bg="#FFFDD0", fg='darkred', font=("Calibri", "15", "bold"))
+                        self.incorrect.place(x=888, y=887) 
+            
     def get_loc(self, root): # Gets a random location image.png and displays it.
         '''If there is an existing location image displayed, delete it.'''
         try:
@@ -58,7 +56,7 @@ class Game:
         loc_generate = r.randint(1, 30) # Generates a random location img since image names are labeled from one to thirty i.e Loc1
         self.loc_num = loc_generate
         loc_set = f"Loc{self.loc_num}" # Sets the name of the random loc img.
-        self.loc_img = PhotoImage(file=f"Assets/{loc_set}.png") # Opens the generated loc img from the assets folder.
+        loc_img = PhotoImage(file=f"Assets/{loc_set}.png") # Opens the generated loc img from the assets folder.
         loc_label = Label(root, height=700, width=1000, image=loc_img, bg='black', highlightbackground="white", highlightthickness=5)
         loc_label.image = loc_img
         loc_label.place(anchor='center', x=960, y=530) # Ensures the image is placed in the Frame correctly.
@@ -68,7 +66,7 @@ instance = Game()
 # Quits the game (closes the window)
 def quit(root):
     root.destroy()
-
+                
 # G.U.I
 root = Tk() # Initialises the window.
 root.resizable(False, False) # Locks the window size to prevent re-sizing.
@@ -109,4 +107,5 @@ rnd_text2.place(x=124, y=255)
 crest_img = PhotoImage(file="Assets/crest.png") # Imports the Howick College Crest
 crest_label = Label(root, height=175, width=200, image=crest_img, bg='white')
 crest_label.place(x=1700, y=700)
+instance.get_loc(root)
 root.mainloop() # Keeps the window open.
